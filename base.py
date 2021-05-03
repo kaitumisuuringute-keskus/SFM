@@ -155,7 +155,8 @@ class SFMBaseModel(six.with_metaclass(ABCMeta, BaseEstimator)):
     reg : float, default: 0
         Strength of regularization
 
-    optimizer : tf.optimizers.Optimizer, default: AdamOptimizer(learning_rate=0.1)
+    optimizer : tf.optimizers.Optimizer, default: 
+    zer(learning_rate=0.1)
         Optimization method used for training
 
     batch_size : int, default: -1
@@ -237,7 +238,7 @@ class SFMBaseModel(six.with_metaclass(ABCMeta, BaseEstimator)):
 
     def init_basemodel(self, co_rank=10, view_rank=0, isFullOrder=True, view_list=None, input_type='dense', output_range = None,
                         n_epochs=100, loss_function=None, batch_size=-1, reg_type='L2', reg=0.01, init_std=0.01, init_scaling=2.0,
-                        optimizer=tf.optimizers.AdamOptimizer(learning_rate=0.01),
+                        optimizer=tf.optimizers.Adam(learning_rate=0.01),
                         log_dir=None, session_config=None, verbose=0):
         assert view_list is not None
         self.core_arguments = {
