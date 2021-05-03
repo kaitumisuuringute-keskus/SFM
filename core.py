@@ -128,18 +128,18 @@ class SFMCore():
         # to avoid the multiplication close to zero when the views has more than 3 modes
         # we can try to scaling the unfiorm distribution using variance_scaling_initializer
 
-        self.Phi = tf.get_variable('embedding_phi', shape = [r, self.n_views], trainable=True,
+        self.Phi = tf.compat.v1.get_variable('embedding_phi', shape = [r, self.n_views], trainable=True,
                                     initializer = tf.contrib.layers.variance_scaling_initializer(factor = self.init_scaling))
 
         self.b = tf.Variable(0.0, trainable=True, name='b')
         # initialize shared factors for each mode
         for m in range(self.n_modes):
             with tf.variable_scope('co_mode_'+str(m+1)):
-                self.W[0][m] = tf.get_variable('embedding_init',
+                self.W[0][m] = tf.compat.v1.get_variable('embedding_init',
                            shape = [self.n_feature_list[m], self.co_rank],
                            trainable=True,
                            initializer = tf.contrib.layers.variance_scaling_initializer(factor = self.init_scaling))
-                self.S[m] = tf.get_variable('layer_norm_S', initializer = tf.ones([r]))
+                self.S[m] = tf.compat.v1.get_variable('layer_norm_S', initializer = tf.ones([r]))
 
         # initialize view specific facotrs for each mode
         for i, modes in enumerate(self.view_list):
@@ -147,14 +147,14 @@ class SFMCore():
             for m in set(modes):
                 with tf.variable_scope('view_'+str(v)+'_mode_' + str(m)):
                     try:
-                        self.Bias[v][m-1] = tf.get_variable('bias', shape = [1,r],
+                        self.Bias[v][m-1] = tf.compat.v1.get_variable('bias', shape = [1,r],
                                 trainable = self.isFullOrder,
                                 initializer=tf.zeros_initializer())
                     except:
                         print('bias mode {} shared in view {}'.format(m,v))
                     try:
                         if self.view_rank>0:
-                            self.W[v][m-1] = tf.get_variable('embedding_init',
+                            self.W[v][m-1] = tf.compat.v1.get_variable('embedding_init',
                                 shape = [self.n_feature_list[m-1], self.view_rank],
                                 trainable=True,
                                 initializer = tf.contrib.layers.variance_scaling_initializer(factor = init_scaling))
