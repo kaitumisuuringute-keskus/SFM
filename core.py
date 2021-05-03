@@ -129,27 +129,27 @@ class SFMCore():
         # we can try to scaling the unfiorm distribution using variance_scaling_initializer
 
         self.Phi = tf.compat.v1.get_variable('embedding_phi', shape = [r, self.n_views], trainable=True,
-                                    initializer = tf.contrib.layers.variance_scaling_initializer(factor = self.init_scaling))
+                                    initializer = tf.compat.v1.keras.initializers.VarianceScaling(scale = self.init_scaling))
 
         self.b = tf.Variable(0.0, trainable=True, name='b')
         # initialize shared factors for each mode
         for m in range(self.n_modes):
-            with tf.variable_scope('co_mode_'+str(m+1)):
+            with tf.compat.v1.variable_scope('co_mode_'+str(m+1)):
                 self.W[0][m] = tf.compat.v1.get_variable('embedding_init',
                            shape = [self.n_feature_list[m], self.co_rank],
                            trainable=True,
-                           initializer = tf.contrib.layers.variance_scaling_initializer(factor = self.init_scaling))
+                           initializer = tf.compat.v1.keras.initializers.VarianceScaling(scale = self.init_scaling))
                 self.S[m] = tf.compat.v1.get_variable('layer_norm_S', initializer = tf.ones([r]))
 
         # initialize view specific facotrs for each mode
         for i, modes in enumerate(self.view_list):
             v = i+1
             for m in set(modes):
-                with tf.variable_scope('view_'+str(v)+'_mode_' + str(m)):
+                with tf.compat.v1.variable_scope('view_'+str(v)+'_mode_' + str(m)):
                     try:
                         self.Bias[v][m-1] = tf.compat.v1.get_variable('bias', shape = [1,r],
                                 trainable = self.isFullOrder,
-                                initializer=tf.zeros_initializer())
+                                initializer=tf.compat.v1.zeros_initializer())
                     except:
                         print('bias mode {} shared in view {}'.format(m,v))
                     try:
@@ -157,7 +157,7 @@ class SFMCore():
                             self.W[v][m-1] = tf.compat.v1.get_variable('embedding_init',
                                 shape = [self.n_feature_list[m-1], self.view_rank],
                                 trainable=True,
-                                initializer = tf.contrib.layers.variance_scaling_initializer(factor = init_scaling))
+                                initializer = tf.compat.v1.keras.initializers.VarianceScaling(scale = init_scaling))
                     except:
                         print('mode {} shared in view {}'.format(m,v))
 
@@ -174,30 +174,30 @@ class SFMCore():
             self.raw_shape = [None]*self.n_modes
 
         for i in range(self.n_modes):
-            with tf.variable_scope('mode_'+str(i+1)):
+            with tf.compat.v1.variable_scope('mode_'+str(i+1)):
                 # if given mode matrix, the input X_ is the list of the row indicators of the mode matrix
                 if self.input_type == 'dense':
                     if self.isRelational:
-                        self.train_x[i] = tf.placeholder(tf.int64, shape=[None], name='X_indices')
-                        self.mode_matrices[i] = tf.placeholder(tf.float32, shape=[None, self.n_feature_list[i]], name='X_matrix')
+                        self.train_x[i] = tf.compat.v1.placeholder(tf.int64, shape=[None], name='X_indices')
+                        self.mode_matrices[i] = tf.compat.v1.placeholder(tf.float32, shape=[None, self.n_feature_list[i]], name='X_matrix')
                     else:
-                        self.train_x[i] = tf.placeholder(tf.float32, shape=[None, self.n_feature_list[i]], name='X')
+                        self.train_x[i] = tf.compat.v1.placeholder(tf.float32, shape=[None, self.n_feature_list[i]], name='X')
                 else:
                     #sparse case
-                    self.raw_indices[i] = tf.placeholder(tf.int64, shape=[None, 2], name='raw_indices')
-                    self.raw_values[i] = tf.placeholder(tf.float32, shape=[None], name='raw_data')
-                    self.raw_shape[i] = tf.placeholder(tf.int64, shape=[2], name='raw_shape')
+                    self.raw_indices[i] = tf.compat.v1.placeholder(tf.int64, shape=[None, 2], name='raw_indices')
+                    self.raw_values[i] = tf.compat.v1.placeholder(tf.float32, shape=[None], name='raw_data')
+                    self.raw_shape[i] = tf.compat.v1.placeholder(tf.int64, shape=[2], name='raw_shape')
                     if self.isRelational:
-                        self.train_x[i] = tf.placeholder(tf.int64, shape=[None], name='X_indices')
+                        self.train_x[i] = tf.compat.v1.placeholder(tf.int64, shape=[None], name='X_indices')
                         self.mode_matrices[i] = tf.SparseTensor(self.raw_indices[i], self.raw_values[i], self.raw_shape[i])
                     # tf.sparse_reorder is not needed since scipy return COO in canonical order
                     else:
                         self.train_x[i] = tf.SparseTensor(self.raw_indices[i], self.raw_values[i], self.raw_shape[i])
-        self.train_y = tf.placeholder(tf.float32, shape=[None], name='Y')
+        self.train_y = tf.compat.v1.placeholder(tf.float32, shape=[None], name='Y')
     def _batch_norm(self, Z, s, b):
         eps = 1e-5
         # Calculate batch mean and variance
-        m, v = tf.nn.moments(Z, [0], keep_dims = True)
+        m, v = tf.nn.moments(x=Z, axes=[0], keepdims = True)
 
         # Apply the initial batch normalizing transform
         normalized_Z = (Z - m) / tf.sqrt(v + eps)
@@ -205,26 +205,26 @@ class SFMCore():
 
     def _layer_norm(self, Z, s, b):
         eps = 1e-5
-        m, v = tf.nn.moments(Z, [1], keep_dims = True)
+        m, v = tf.nn.moments(x=Z, axes=[1], keepdims = True)
         normalized_Z = (Z - m) / tf.sqrt(v + eps)
         return normalized_Z * s + b
 
     def _regularizer_func(self, W, node_name):
         if self.reg_type == 'L1':
-            norm = tf.reduce_sum(tf.abs(W), name=node_name)
+            norm = tf.reduce_sum(input_tensor=tf.abs(W), name=node_name)
         else:
             norm = tf.nn.l2_loss(W, name=node_name)
         return norm
 
     def _init_regular(self):
         self.regularization = 0
-        tf.summary.scalar('bias', self.b)
+        tf.compat.v1.summary.scalar('bias', self.b)
 
         self.regularization = 0
         for m in range(self.n_modes):
             node_name = 'regularization_penalty_v0_m{}'.format(m)
             norm = self._regularizer_func(self.W[0][m],node_name)
-            tf.summary.scalar('norm_W_v0_m{}'.format(m), norm)
+            tf.compat.v1.summary.scalar('norm_W_v0_m{}'.format(m), norm)
             self.regularization += norm
         for i, modes in enumerate(self.view_list):
             v = i + 1
@@ -232,7 +232,7 @@ class SFMCore():
                 try:
                     node_name = 'regularization_penalty_v{}_b{}'.format(v, m)
                     norm = self._regularizer_func(self.Bias[v][m-1], node_name)
-                    tf.summary.scalar('norm_Bias_v{}_m{}'.format(v,m), norm)
+                    tf.compat.v1.summary.scalar('norm_Bias_v{}_m{}'.format(v,m), norm)
                 except:
                     print('bias mode {} shared in view {}'.format(m,v))
                 self.regularization += norm
@@ -240,23 +240,23 @@ class SFMCore():
                     try:
                         node_name = 'regularization_penalty_v{}_m{}'.format(v,m)
                         norm = self._regularizer_func(self.W[v][m-1],node_name)
-                        tf.summary.scalar('norm_W_v{}_m{}'.format(v,m), norm)
+                        tf.compat.v1.summary.scalar('norm_W_v{}_m{}'.format(v,m), norm)
                     except:
                         print('mode {} shared in view {}'.format(m,v))
                     self.regularization += norm
 
         for v in range(len(self.view_list)):
             norm = self._regularizer_func(self.Phi[:,v], 'regularization_penalty_phi{}'.format(v+1))
-            tf.summary.scalar('norm_Phi_v{}'.format(v+1), norm)
+            tf.compat.v1.summary.scalar('norm_Phi_v{}'.format(v+1), norm)
         node_name = 'regularization_penalty_phi'
         norm = self._regularizer_func(self.Phi, node_name)
         self.regularization += norm
-        tf.summary.scalar('regularization_penalty', self.regularization)
+        tf.compat.v1.summary.scalar('regularization_penalty', self.regularization)
 
     def _init_loss(self):
         self.loss = self.loss_function(self.outputs, self.train_y)
-        self.reduced_loss = tf.reduce_mean(self.loss)
-        tf.summary.scalar('loss', self.reduced_loss)
+        self.reduced_loss = tf.reduce_mean(input_tensor=self.loss)
+        tf.compat.v1.summary.scalar('loss', self.reduced_loss)
 
     def _init_main_block(self):
         self.prod_view = {}
@@ -264,7 +264,7 @@ class SFMCore():
 
 #        self.outputs = self.b
         self.outputs = 0
-        train_shape = [tf.shape(self.train_x[0])[0], r]
+        train_shape = [tf.shape(input=self.train_x[0])[0], r]
         self.XW_cache = {}
         self.prod_embedding = [None] * self.n_views
         self.view_contribution = [None] * self.n_views
@@ -274,11 +274,11 @@ class SFMCore():
 
         for i, modes in enumerate(self.view_list):
             v = i + 1
-            with tf.name_scope('view_{}'.format(v)) as scope:
+            with tf.compat.v1.name_scope('view_{}'.format(v)) as scope:
                 XW_list = [None] * self.n_modes
                 # noting that the modes given in the input start from 1
                 for m in modes:
-                    with tf.name_scope('mode_{}'.format(m)) as scope:
+                    with tf.compat.v1.name_scope('mode_{}'.format(m)) as scope:
                         if self.view_rank > 0:
                             XW = self._view_mode_embedding(v, m - 1)
                             XW_list[m-1] = tf.concat(axis=1, values=[self.XW_cache[m-1], XW], name='XW')
@@ -291,24 +291,24 @@ class SFMCore():
                 # the reduction_indices in the reduce_prod does not handle scalar, 
                 # so we need to transform it to a tensor
                 embedding_tensor = tf.stack([xw for xw in XW_list if xw is not None],axis=2, name='embedding_tensor')
-                self.prod_embedding[i] = tf.reduce_prod(embedding_tensor, axis=[2], name='prod_embedding')
+                self.prod_embedding[i] = tf.reduce_prod(input_tensor=embedding_tensor, axis=[2], name='prod_embedding')
 
                 self.view_contribution[i] = matmul_wrapper(self.prod_embedding[i], tf.reshape(self.Phi[:,i],(r,1)), 'dense')
-                tf.summary.histogram('view_contribution{}'.format(v), self.view_contribution[i])
+                tf.compat.v1.summary.histogram('view_contribution{}'.format(v), self.view_contribution[i])
 
-        self.outputs += tf.reduce_sum(self.view_contribution, axis=[0], name='output')
-        tf.summary.histogram('output', self.outputs)
+        self.outputs += tf.reduce_sum(input_tensor=self.view_contribution, axis=[0], name='output')
+        tf.compat.v1.summary.histogram('output', self.outputs)
 
-        with tf.name_scope('loss') as scope:
+        with tf.compat.v1.name_scope('loss') as scope:
             self._init_loss()
 
-        with tf.name_scope('regularization') as scope:
+        with tf.compat.v1.name_scope('regularization') as scope:
             self._init_regular()
 
     def _view_mode_embedding(self, v, m):
         if self.isRelational:
             modeEmbedding = matmul_wrapper(self.mode_matrices[m], self.W[v][m], self.input_type)
-            XW = tf.nn.embedding_lookup(modeEmbedding, self.train_x[m])
+            XW = tf.nn.embedding_lookup(params=modeEmbedding, ids=self.train_x[m])
         else:
             XW = matmul_wrapper(self.train_x[m], self.W[v][m], self.input_type)
         return XW
@@ -318,32 +318,32 @@ class SFMCore():
 #        reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
         self.target = self.reduced_loss + self.reg * self.regularization
 
-        self.checked_target = tf.verify_tensor_all_finite(
+        self.checked_target = tf.compat.v1.verify_tensor_all_finite(
             self.target,
             msg='NaN or Inf in target value', name='target')
-        tf.summary.scalar('target', self.checked_target)
+        tf.compat.v1.summary.scalar('target', self.checked_target)
 
     def build_graph(self):
         """Build computational graph according to params."""
         assert self.n_feature_list is not None
         self.graph = tf.Graph()
         with self.graph.as_default():
-            with tf.name_scope('params') as scope:
+            with tf.compat.v1.name_scope('params') as scope:
                 self._init_learnable_params()
 
-            with tf.name_scope('inputBlock') as scope:
+            with tf.compat.v1.name_scope('inputBlock') as scope:
                 self._init_placeholders()
 
-            with tf.name_scope('mainBlock') as scope:
+            with tf.compat.v1.name_scope('mainBlock') as scope:
                 self._init_main_block()
 
             self._init_target()
 
             self.trainer = self.optimizer.minimize(self.checked_target)
-            self.init_all_vars = tf.global_variables_initializer()
+            self.init_all_vars = tf.compat.v1.global_variables_initializer()
 #            self.post_step = self._norm_constraint_op()
-            self.summary_op = tf.summary.merge_all()
-            self.saver = tf.train.Saver()
+            self.summary_op = tf.compat.v1.summary.merge_all()
+            self.saver = tf.compat.v1.train.Saver()
 
 def matmul_wrapper(A, B, optype):
     """Wrapper for handling sparse and dense versions of matmul operation.
@@ -362,7 +362,7 @@ def matmul_wrapper(A, B, optype):
     if optype == 'dense':
         return tf.matmul(A, B)
     elif optype == 'sparse':
-        return tf.sparse_tensor_dense_matmul(A, B)
+        return tf.sparse.sparse_dense_matmul(A, B)
     else:
         raise NameError('Unknown input type in matmul_wrapper')
 

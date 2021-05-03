@@ -19,13 +19,13 @@ def sigmoid(x):
 # Be carefull about dimentionality -- maybe tf.transpose(outputs) is needed
 
 def loss_logistic(outputs, y):
-    margins = -y * tf.transpose(outputs)
-    raw_loss = tf.log(tf.add(1.0, tf.exp(margins)), name='logit_loss')
+    margins = -y * tf.transpose(a=outputs)
+    raw_loss = tf.math.log(tf.add(1.0, tf.exp(margins)), name='logit_loss')
     return raw_loss
 #    return tf.minimum(raw_loss, 100, name='truncated_log_loss')
 
 def loss_mse(outputs, y):
-    return tf.pow(y -  tf.transpose(outputs), 2, name='mse_loss')
+    return tf.pow(y -  tf.transpose(a=outputs), 2, name='mse_loss')
 #    return tf.pow(y -  outputs, 2, name='mse_loss')
 
 
@@ -155,8 +155,7 @@ class SFMBaseModel(six.with_metaclass(ABCMeta, BaseEstimator)):
     reg : float, default: 0
         Strength of regularization
 
-    optimizer : tf.optimizers.Optimizer, default: 
-    zer(learning_rate=0.1)
+    optimizer : tf.train.Optimizer, default: AdamOptimizer(learning_rate=0.1)
         Optimization method used for training
 
     batch_size : int, default: -1
@@ -238,7 +237,7 @@ class SFMBaseModel(six.with_metaclass(ABCMeta, BaseEstimator)):
 
     def init_basemodel(self, co_rank=10, view_rank=0, isFullOrder=True, view_list=None, input_type='dense', output_range = None,
                         n_epochs=100, loss_function=None, batch_size=-1, reg_type='L2', reg=0.01, init_std=0.01, init_scaling=2.0,
-                        optimizer=tf.optimizers.Adam(learning_rate=0.01),
+                        optimizer=tf.compat.v1.train.AdamOptimizer(learning_rate=0.01),
                         log_dir=None, session_config=None, verbose=0):
         assert view_list is not None
         self.core_arguments = {
@@ -280,16 +279,16 @@ class SFMBaseModel(six.with_metaclass(ABCMeta, BaseEstimator)):
         if self.core.graph is None:
             raise 'Graph not found. Try call .core.build_graph() before ._initialize_session()'
         if self.need_logs:
-            self.summary_writer = tf.summary.FileWriter(
+            self.summary_writer = tf.compat.v1.summary.FileWriter(
                 self.log_dir,
                 self.core.graph)
             if self.verbose > 0:
                 print('Initialize logs, use: \ntensorboard --logdir={}'.format(
                     os.path.abspath(self.log_dir)))
 #        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction = 0.5)
-        gpu_options = tf.GPUOptions(allow_growth = True)
-        cf = tf.ConfigProto(gpu_options = gpu_options)
-        self.session = tf.Session(config= cf,
+        gpu_options = tf.compat.v1.GPUOptions(allow_growth = True)
+        cf = tf.compat.v1.ConfigProto(gpu_options = gpu_options)
+        self.session = tf.compat.v1.Session(config= cf,
                 graph=self.core.graph)
         self.session.run(self.core.init_all_vars)
 

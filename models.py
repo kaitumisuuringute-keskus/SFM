@@ -25,7 +25,7 @@ class SFMClassifier(SFMBaseModel):
     """
 
     def __init__(self, co_rank=10, view_rank = 0, isFullOrder=True, view_list=[[1]], input_type='dense', output_range=None, 
-                n_epochs=100, optimizer=tf.optimizers.Adam(learning_rate=0.1), reg_type='L2', reg=0.1,
+                n_epochs=100, optimizer=tf.compat.v1.train.AdamOptimizer(learning_rate=0.1), reg_type='L2', reg=0.1,
                 batch_size=-1, init_std=0.01, init_scaling=2.0, log_dir=None, verbose=0,
                 session_config=None):
         init_params = {
@@ -99,9 +99,8 @@ class SFMRegressor(SFMBaseModel):
 
     See SFMBaseModel docs for details about parameters.
     """
-    
     def __init__(self, co_rank=10, view_rank = 0, isFullOrder=True, view_list=[[1]], input_type='dense', output_range = None,
-                n_epochs=100, optimizer=tf.optimizers.Adam(learning_rate=0.1), reg_type='L2', reg=0.1,
+                n_epochs=100, optimizer=tf.compat.v1.train.AdamOptimizer(learning_rate=0.1), reg_type='L2', reg=0.1,
                 batch_size=-1, init_std=0.01, init_scaling=2.0, log_dir=None, verbose=0,
                 session_config=None):
         init_params = {
